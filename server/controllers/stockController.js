@@ -202,7 +202,6 @@ export const getTopMovers = async (req, res) => {
 
 
 
-
 export const getRSIScreener = async (req, res) => {
   try {
     console.log("\n========== RSI SCREENER ==========");
@@ -222,7 +221,7 @@ export const getRSIScreener = async (req, res) => {
           });
 
           if (!prices || prices.length < 20) {
-            console.log("❌ Not enough data:", symbol);
+            console.log("❌ No data:", symbol);
             return null;
           }
 
@@ -246,15 +245,32 @@ export const getRSIScreener = async (req, res) => {
 
     console.log("✅ Valid Stocks:", filtered.length);
 
-    // 🔥 SORT ALL
-    const sorted = filtered.sort((a, b) => a.rsi - b.rsi);
+    let oversold = filtered
+      .filter((s) => s.rsi >= 20 && s.rsi <= 35)
+      .sort((a, b) => a.rsi - b.rsi)
+      .slice(0, 10);
 
-    // 🔥 ALWAYS SHOW DATA (KEY FIX)
-    const oversold = sorted.slice(0, 10); // lowest RSI
-    const overbought = [...sorted].reverse().slice(0, 10); // highest RSI
+    let overbought = filtered
+      .filter((s) => s.rsi >= 65 && s.rsi <= 80)
+      .sort((a, b) => b.rsi - a.rsi)
+      .slice(0, 10);
 
-    console.log("📉 Lowest RSI:", oversold[0]);
-    console.log("📈 Highest RSI:", overbought[0]);
+    console.log("📉 Oversold count:", oversold.length);
+    console.log("📈 Overbought count:", overbought.length);
+
+    if (oversold.length === 0) {
+      console.log("⚠️ Fallback oversold");
+      oversold = [...filtered]
+        .sort((a, b) => a.rsi - b.rsi)
+        .slice(0, 5);
+    }
+
+    if (overbought.length === 0) {
+      console.log("⚠️ Fallback overbought");
+      overbought = [...filtered]
+        .sort((a, b) => b.rsi - a.rsi)
+        .slice(0, 5);
+    }
 
     res.json({ oversold, overbought });
 

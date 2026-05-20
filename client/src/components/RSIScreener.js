@@ -44,7 +44,7 @@ export default function RSIScreener({ data }) {
       {/* LIST */}
       {list.length === 0 ? (
         <p className="text-gray-500 text-xs">
-          No data available
+          No stocks in this range
         </p>
       ) : (
         list.map((s) => (
