@@ -3,18 +3,42 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// 🔥 SWITCH (TURN AI ON/OFF)
+const ENABLE_AI = false;
 
+// 🔥 SAFE INIT (NO CRASH)
+let client = null;
+
+if (ENABLE_AI && process.env.OPENAI_API_KEY) {
+  client = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+  });
+} else {
+  console.log("⚠️ OpenAI disabled");
+}
+
+// 🔥 MAIN FUNCTION
 export const analyzeTrade = async (stock) => {
-  const { symbol, price, rsi, score, bias } = stock;
+  const { symbol, price, rsi } = stock;
 
+  try {
+    // ❌ NO AI → FREE LOGIC
+    if (!client) {
+      if (rsi < 30) {
+        return "Oversold → BUY setup possible";
+      } else if (rsi > 70) {
+        return "Overbought → SELL setup possible";
+      } else {
+        return "Neutral → wait for breakout";
+      }
+    }
 
-const prompt = `
+    // ✅ AI PROMPT
+    const prompt = `
 You are a professional trader.
 
 Given:
+Symbol: ${symbol}
 Price: ${price}
 RSI: ${rsi}
 
@@ -31,10 +55,18 @@ IMPORTANT:
 Return only clean trade explanation.
 `;
 
-  const response = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [{ role: "user", content: prompt }]
-  });
+    const response = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 100
+    });
 
-  return response.choices[0].message.content;
+    return response.choices?.[0]?.message?.content || "No analysis";
+
+  } catch (error) {
+    console.error("AI ERROR:", error.message);
+
+    // 🔥 FAIL SAFE (NO CRASH)
+    return "Analysis unavailable";
+  }
 };

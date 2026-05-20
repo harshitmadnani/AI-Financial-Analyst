@@ -1,37 +1,84 @@
-export default function TopMovers({ gainers, losers, format }) {
+export default function TopMovers({ gainers = [], losers = [], format }) {
+
+  // ✅ SAFE FORMAT FALLBACK
+  const safeFormat = (num) => {
+    if (format) return format(num);
+    return Number(num || 0).toFixed(2);
+  };
+
+  console.log(gainers, losers, "TopMovers Data");
+
   return (
-    <div className="bg-gray-900 p-4 rounded-2xl">
+    <div className="bg-gray-900 p-5 rounded-2xl">
 
-      <h3 className="mb-3 font-semibold">Top Movers</h3>
+      <h3 className="mb-4 font-semibold text-gray-200">
+        Top Movers (Today)
+      </h3>
 
-      {/* Gainers */}
-      <div className="mb-4">
-        <p className="text-green-400 text-sm mb-2">Top Gainers</p>
+      {/* EMPTY STATE */}
+      {gainers.length === 0 && losers.length === 0 && (
+        <p className="text-gray-400 text-sm">Loading market movers...</p>
+      )}
 
-        {gainers.map((s) => (
-          <div key={s.symbol} className="flex justify-between text-sm mb-1">
-            <span>{s.symbol.replace(".NS", "")}</span>
-            <span className="text-green-400">
-              +{s.changePercent.toFixed(2)}%
-            </span>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-6">
+
+        {/* ✅ GAINERS */}
+        <div>
+          <p className="text-green-400 text-xs mb-3 uppercase tracking-wide">
+            Top Gainers
+          </p>
+
+          {gainers.map((s) => (
+            <div
+              key={s.symbol}
+              className="flex justify-between items-center mb-2 text-sm"
+            >
+              <span className="text-gray-300">
+                {s.symbol.replace(".NS", "")}
+              </span>
+
+              <div className="text-right min-w-[90px]">
+                <p className="text-gray-200">
+                  ₹ {safeFormat(s.price)}
+                </p>
+              <p className="text-green-400 text-xs font-medium">
+  {s.changePercent > 0 ? "+" : ""}
+  {s.changePercent.toFixed(2)}%
+</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ❌ LOSERS */}
+        <div>
+          <p className="text-red-400 text-xs mb-3 uppercase tracking-wide">
+            Top Losers
+          </p>
+
+          {losers.map((s) => (
+            <div
+              key={s.symbol}
+              className="flex justify-between items-center mb-2 text-sm"
+            >
+              <span className="text-gray-300">
+                {s.symbol.replace(".NS", "")}
+              </span>
+
+              <div className="text-right min-w-[90px]">
+                <p className="text-gray-200">
+                  ₹ {safeFormat(s.price)}
+                </p>
+              <p className="text-red-400 text-xs font-medium">
+  {s.changePercent > 0 ? "+" : ""}
+  {s.changePercent.toFixed(2)}%
+</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
       </div>
-
-      {/* Losers */}
-      <div>
-        <p className="text-red-400 text-sm mb-2">Top Losers</p>
-
-        {losers.map((s) => (
-          <div key={s.symbol} className="flex justify-between text-sm mb-1">
-            <span>{s.symbol.replace(".NS", "")}</span>
-            <span className="text-red-400">
-              {s.changePercent.toFixed(2)}%
-            </span>
-          </div>
-        ))}
-      </div>
-
     </div>
   );
 }

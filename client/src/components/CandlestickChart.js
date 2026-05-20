@@ -2,6 +2,8 @@ import React, { useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 
 export default function CandlestickChart({ data }) {
+  const MAX_VISIBLE = 40;
+  const visibleData = data.slice(-MAX_VISIBLE);
 
   // ✅ EMA FUNCTION
   const calculateEMA = (data, period) => {
@@ -94,12 +96,12 @@ export default function CandlestickChart({ data }) {
      dataZoom: [
   {
     type: "inside",
-    start: 70,
+    start: 100 - (MAX_VISIBLE / data.length) * 100,
     end: 100
   },
   {
     type: "slider",
-    start: 70,
+    start: 100 - (MAX_VISIBLE / data.length) * 100,
     end: 100,
     height: 20
   }

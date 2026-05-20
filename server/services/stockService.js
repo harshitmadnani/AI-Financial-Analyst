@@ -4,12 +4,9 @@ const yahooFinance = new YahooFinance();
 
 export const getStockData = async (symbol, config) => {
   try {
-    console.log("Fetching symbol:", symbol);
-    console.log("Config:", config);
-
     const now = Math.floor(Date.now() / 1000);
 
-    // 🔥 Convert range → seconds
+    // 🔥 Range → seconds
     const rangeMap = {
       "1d": 1 * 24 * 60 * 60,
       "5d": 5 * 24 * 60 * 60,
@@ -26,41 +23,57 @@ export const getStockData = async (symbol, config) => {
       interval: config.interval
     });
 
-    console.log("YAHOO RAW:", result);
-    console.log("QUOTES LENGTH:", result?.quotes?.length);
-
-    // ✅ SAFE ACCESS
     const quote = result?.quotes || [];
 
-    // 🚨 HARD FAIL (NO FAKE DATA)
-    if (!quote || quote.length === 0) {
+    // 🚨 HARD FAIL (GOOD PRACTICE)
+    if (!quote.length) {
       throw new Error(`No market data for ${symbol}`);
     }
 
-    // 🔥 Clean OHLC structure
+    // ✅ CLEAN HISTORY (NO META HERE)
     const history = quote.map(q => ({
       time: new Date(q.date).toISOString(),
-      open: q.open ?? 0,
-      high: q.high ?? 0,
-      low: q.low ?? 0,
-      close: q.close ?? 0,
-      volume: q.volume ?? 0
+      open: Number(q.open ?? 0),
+      high: Number(q.high ?? 0),
+      low: Number(q.low ?? 0),
+      close: Number(q.close ?? 0),
+      volume: Number(q.volume ?? 0)
     }));
 
-    // 🔥 Extract close prices for RSI
-    const prices = history.map(h => h.close).filter(Boolean);
+    // ✅ CLOSE PRICES FOR RSI
+    const prices = history.map(h => h.close).filter(p => p > 0);
 
-    // 🚨 EXTRA SAFETY
-    if (prices.length === 0) {
+    if (!prices.length) {
       throw new Error(`Invalid price data for ${symbol}`);
     }
 
-    return { history, prices };
+    // ✅ RETURN META SEPARATELY (IMPORTANT)
+    return {
+      history,
+      prices,
+      meta: result.meta || {}
+    };
 
   } catch (err) {
     console.error("YAHOO ERROR:", err.message);
-
-    // ❌ DO NOT silently fallback — send error up
     throw new Error(`Fetch failed for ${symbol}`);
+  }
+};
+
+// 🔥 NEW FUNCTION (REAL MARKET DATA)
+export const getStockQuote = async (symbol) => {
+  try {
+    const quote = await yahooFinance.quote(symbol);
+
+    return {
+      symbol,
+      price: quote.regularMarketPrice,
+      prevClose: quote.regularMarketPreviousClose,
+      changePercent: quote.regularMarketChangePercent
+    };
+
+  } catch (err) {
+    console.error("QUOTE ERROR:", symbol);
+    return null;
   }
 };
