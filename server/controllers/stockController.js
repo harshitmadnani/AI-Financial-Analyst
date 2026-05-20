@@ -13,8 +13,7 @@ export const getStock = async (req, res) => {
   const { symbol } = req.params;
   const { interval = "1D" } = req.query;
 
-  console.log("\n========== STOCK API ==========");
-  console.log("Symbol:", symbol, "| Interval:", interval);
+
 
   const intervalMap = {
     "1D": { range: "1d", interval: "5m" },
@@ -29,8 +28,7 @@ export const getStock = async (req, res) => {
     // 🔥 1. CHART DATA
     const { history, prices } = await getStockData(symbol, config);
 
-    console.log("Prices length:", prices.length);
-    console.log("Latest candle:", prices[prices.length - 1]);
+
 
     if (!prices || prices.length === 0) {
       throw new Error("No valid price data");
@@ -45,21 +43,11 @@ const prevClose = quote?.prevClose || latestPrice;
 const change = latestPrice - prevClose;
 const changePercent = (change / prevClose) * 100;
 
-    // 🔥 2. REAL MARKET DATA (FIXED)
-
-    console.log("QUOTE:", quote);
-
-
-
-    console.log("PrevClose:", prevClose);
-    console.log("Change:", change);
-    console.log("Change %:", changePercent);
 
     // 📉 RSI
     let rsi = calculateRSI(prices);
     if (!rsi || isNaN(rsi)) rsi = 50;
 
-    console.log("RSI:", rsi);
 
     // 🎯 Bias
     let bias = "NEUTRAL";
@@ -136,7 +124,6 @@ const changePercent = (change / prevClose) * 100;
       interval === "1M" ? history.slice(-120) :
       history.slice(-200);
 
-    console.log("Final Price:", latestPrice);
 
     res.json({
       symbol,
@@ -171,7 +158,6 @@ export const getTopMovers = async (req, res) => {
       ? req.body.symbols
       : [];
 
-    console.log("Symbols count:", symbols.length);
 
     const results = await Promise.all(
       symbols.map(async (symbol) => {
@@ -180,7 +166,6 @@ export const getTopMovers = async (req, res) => {
 
           if (!quote || !quote.price || !quote.prevClose) return null;
 
-          console.log(symbol, "=>", quote.changePercent);
 
           return {
             symbol,
@@ -197,7 +182,6 @@ export const getTopMovers = async (req, res) => {
 
     const filtered = results.filter(Boolean);
 
-    console.log("Valid stocks:", filtered.length);
 
     const gainers = [...filtered]
       .sort((a, b) => b.changePercent - a.changePercent)
@@ -207,13 +191,75 @@ export const getTopMovers = async (req, res) => {
       .sort((a, b) => a.changePercent - b.changePercent)
       .slice(0, 10);
 
-    console.log("Top Gainer:", gainers[0]);
-    console.log("Top Loser:", losers[0]);
-
+ 
     res.json({ gainers, losers });
 
   } catch (err) {
     console.error("❌ TOP MOVERS ERROR:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+
+
+export const getRSIScreener = async (req, res) => {
+  try {
+    console.log("\n========== RSI SCREENER ==========");
+
+    const symbols = Array.isArray(req.body.symbols)
+      ? req.body.symbols
+      : [];
+
+    console.log("Total Symbols:", symbols.length);
+
+    const results = await Promise.all(
+      symbols.map(async (symbol) => {
+        try {
+          const { prices } = await getStockData(symbol, {
+            range: "1mo",
+            interval: "60m"
+          });
+
+          if (!prices || prices.length < 20) {
+            console.log("❌ Not enough data:", symbol);
+            return null;
+          }
+
+          const rsi = calculateRSI(prices);
+
+          console.log("RSI:", symbol, rsi);
+
+          return {
+            symbol,
+            rsi: Number((rsi || 50).toFixed(2))
+          };
+
+        } catch (err) {
+          console.log("❌ Error:", symbol);
+          return null;
+        }
+      })
+    );
+
+    const filtered = results.filter(Boolean);
+
+    console.log("✅ Valid Stocks:", filtered.length);
+
+    // 🔥 SORT ALL
+    const sorted = filtered.sort((a, b) => a.rsi - b.rsi);
+
+    // 🔥 ALWAYS SHOW DATA (KEY FIX)
+    const oversold = sorted.slice(0, 10); // lowest RSI
+    const overbought = [...sorted].reverse().slice(0, 10); // highest RSI
+
+    console.log("📉 Lowest RSI:", oversold[0]);
+    console.log("📈 Highest RSI:", overbought[0]);
+
+    res.json({ oversold, overbought });
+
+  } catch (err) {
+    console.error("❌ RSI SCREENER ERROR:", err.message);
     res.status(500).json({ error: err.message });
   }
 };

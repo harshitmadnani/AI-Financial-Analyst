@@ -55,7 +55,6 @@ export const getStockData = async (symbol, config) => {
     };
 
   } catch (err) {
-    console.error("YAHOO ERROR:", err.message);
     throw new Error(`Fetch failed for ${symbol}`);
   }
 };

@@ -8,6 +8,7 @@ import QuickAnalyse from "./components/QuickAnalyse";
 import Watchlist from "./components/Watchlist";
 import Predictions from "./components/Predictions";
 import TopMovers from "./components/TopMovers";
+import RSIScreener from "./components/RSIScreener";
 
 /* ✅ STOCK DATA */
 const STOCKS = {
@@ -62,6 +63,7 @@ export default function Dashboard() {
   const [watchlist, setWatchlist] = useState([]);
   const [predictions, setPredictions] = useState([]);
   const [topMovers, setTopMovers] = useState({ gainers: [], losers: [] });
+  const [rsiData, setRsiData] = useState({ oversold: [], overbought: [] });
 
   const format = (num) => Number(num || 0).toFixed(2);
 
@@ -115,6 +117,33 @@ export default function Dashboard() {
 
     fetchStock(symbol);
   };
+
+const fetchRSIScreener = async () => {
+  try {
+    const res = await fetch("http://localhost:5000/stock/rsi-screener", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ symbols: ALL_STOCKS })
+    });
+
+    const data = await res.json();
+    setRsiData(data);
+
+  } catch (err) {
+    console.error("RSI screener error:", err);
+  }
+};
+
+useEffect(() => {
+  fetchRSIScreener();
+
+  const interval = setInterval(fetchRSIScreener, 600000); // 10 min
+
+  return () => clearInterval(interval);
+}, []);
+
 
   const removeFromWatchlist = (symbol) => {
     const updated = watchlist.filter((s) => s !== symbol);
@@ -228,6 +257,7 @@ export default function Dashboard() {
             losers={topMovers.losers}
             format={format}
           />
+          <RSIScreener data={rsiData} />
         </div>
 
         {/* RIGHT */}
