@@ -1,114 +1,147 @@
-import React from "react";
+import React, { useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 
-const CandlestickChart = ({ data }) => {
-  if (!data || data.length === 0) return null;
+export default function CandlestickChart({ data }) {
 
-  // Transform API data
-  const dates = data.map(d => d.date);
-  const values = data.map(d => [
-    d.open,
-    d.close,
-    d.low,
-    d.high
-  ]);
-  const volumes = data.map(d => d.volume);
-
-  // EMA calculation
-  const calculateEMA = (period, prices) => {
+  // ✅ EMA FUNCTION
+  const calculateEMA = (data, period) => {
+    const prices = data.map(d => d.close);
     let k = 2 / (period + 1);
-    let emaArray = [];
-    let ema = prices[0];
+    let ema = [prices[0]];
 
-    prices.forEach((price, i) => {
-      ema = i === 0 ? price : price * k + ema * (1 - k);
-      emaArray.push(ema.toFixed(2));
-    });
+    for (let i = 1; i < prices.length; i++) {
+      ema.push(prices[i] * k + ema[i - 1] * (1 - k));
+    }
 
-    return emaArray;
+    return ema;
   };
+  const dates = data.map(d => {
+  const dt = new Date(d.time);
+  return `${dt.getHours()}:${dt.getMinutes().toString().padStart(2, "0")}`;
+});
 
-  const closePrices = data.map(d => d.close);
-  const ema20 = calculateEMA(20, closePrices);
+  // ✅ OPTION (HOOK ALWAYS FIRST)
+  const option = useMemo(() => {
+    if (!data || data.length === 0) return {};
 
-  const option = {
-    backgroundColor: "transparent",
+    return {
+      backgroundColor: "transparent",
 
-    tooltip: {
-      trigger: "axis"
-    },
-
-    axisPointer: {
-      link: [{ xAxisIndex: "all" }]
-    },
-
-    grid: [
-      { left: "5%", right: "5%", height: "60%" },
-      { left: "5%", right: "5%", top: "75%", height: "15%" }
-    ],
-
-    xAxis: [
-      {
-        type: "category",
-        data: dates,
-        scale: true,
-        boundaryGap: false
+      tooltip: {
+        trigger: "axis",
+        axisPointer: { type: "cross" }
       },
-      {
-        type: "category",
-        gridIndex: 1,
-        data: dates
-      }
-    ],
+
+  grid: [
+  { left: "8%", right: "5%", height: "55%" },
+  { left: "8%", right: "5%", top: "70%", height: "18%" }
+],
+
+      xAxis: [
+        {
+          type: "category",
+          data: dates,
+          boundaryGap: false,
+          axisLine: { lineStyle: { color: "#888" } },
+          axisLabel: {
+            color: "#aaa",
+            fontSize: 10,
+            interval: Math.floor(data.length / 6) // 🔥 show fewer labels
+          }
+        },
+        {
+          type: "category",
+          gridIndex: 1,
+          data: data.map(d => d.time)
+        }
+      ],
 
     yAxis: [
-      { scale: true },
-      { gridIndex: 1 }
-    ],
+  {
+    scale: true,
+    position: "right", // 🔥 move to right (clean like TradingView)
+    
+    axisLabel: {
+      color: "#aaa",
+      formatter: (value) => value.toFixed(0), // 🔥 removes decimals clutter
+    },
 
-    series: [
-      {
-        name: "Candlestick",
-        type: "candlestick",
-        data: values,
-        itemStyle: {
-          color: "#22c55e",     // green
-          color0: "#ef4444",    // red
-          borderColor: "#22c55e",
-          borderColor0: "#ef4444"
-        }
-      },
-
-      {
-        name: "EMA 20",
-        type: "line",
-        data: ema20,
-        smooth: true,
-        lineStyle: {
-          color: "#3b82f6",
-          width: 2
-        }
-      },
-
-      {
-        name: "Volume",
-        type: "bar",
-        xAxisIndex: 1,
-        yAxisIndex: 1,
-        data: volumes,
-        itemStyle: {
-          color: "#64748b"
-        }
+    splitLine: {
+      lineStyle: {
+        color: "#1f2937", // subtle grid
+        type: "dashed"
       }
-    ]
-  };
+    },
+
+    axisLine: {
+      show: false
+    },
+
+    axisTick: {
+      show: false
+    }
+  },
+
+  {
+    gridIndex: 1,
+    axisLabel: {
+      show: false
+    },
+    splitLine: { show: false }
+  }
+],
+
+     dataZoom: [
+  {
+    type: "inside",
+    start: 70,
+    end: 100
+  },
+  {
+    type: "slider",
+    start: 70,
+    end: 100,
+    height: 20
+  }
+],
+
+      series: [
+        {
+          type: "candlestick",
+          data: data.map(d => [d.open, d.close, d.low, d.high]),
+          itemStyle: {
+            color: "#22c55e",
+            color0: "#ef4444",
+            borderColor: "#22c55e",
+            borderColor0: "#ef4444"
+          }
+        },
+
+        {
+          type: "line",
+          data: calculateEMA(data, 20),
+          smooth: true,
+          showSymbol: false,
+          lineStyle: { width: 2, color: "#60a5fa" }
+        },
+
+        {
+          type: "bar",
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          data: data.map(d => d.volume),
+          itemStyle: {
+            color: "#888"
+          }
+        }
+      ]
+    };
+  }, [data]);
+
+  // ✅ SAFE RENDER
+  if (!data || data.length === 0) return null;
 
   return (
-    <ReactECharts
-      option={option}
-      style={{ height: 400, width: "100%" }}
-    />
+    <ReactECharts option={option} style={{ height: 400 }} />
   );
-};
-
-export default CandlestickChart;
+}

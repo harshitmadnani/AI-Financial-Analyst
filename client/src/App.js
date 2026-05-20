@@ -8,6 +8,7 @@ import StockDetails from "./components/StockDetails";
 import QuickAnalyse from "./components/QuickAnalyse";
 import Watchlist from "./components/Watchlist";
 import Predictions from "./components/Predictions";
+import TopMovers from "./components/TopMovers";
 
 /* ✅ STOCK DATA */
 const STOCKS = {
@@ -31,6 +32,7 @@ export default function Dashboard() {
   const [stockMap, setStockMap] = useState({});
   const [watchlist, setWatchlist] = useState([]);
   const [predictions, setPredictions] = useState([]);
+  const [topMovers, setTopMovers] = useState({ gainers: [], losers: [] });
 
   const selectedStockData = selectedStock
     ? stockMap[selectedStock]
@@ -51,6 +53,22 @@ export default function Dashboard() {
       console.error("Fetch error:", symbol);
     }
   };
+
+  const fetchTopMovers = async () => {
+  try {
+    const res = await fetch("http://localhost:5000/top-movers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ symbols: STOCKS }) // ⚠️ make sure STOCKS is array
+    });
+
+    const data = await res.json();
+    setTopMovers(data);
+
+  } catch (err) {
+    console.error("Top Movers Error:", err);
+  }
+};
 
   /* ✅ SELECT STOCK */
   const handleSelectStock = (stock) => {
@@ -99,6 +117,17 @@ export default function Dashboard() {
       fetchStock(defaultStock);
     }
   }, []);
+  useEffect(() => {
+  fetchTopMovers();
+}, []);
+
+useEffect(() => {
+  fetchTopMovers();
+
+  const interval = setInterval(fetchTopMovers, 600000); // every 1 min
+
+  return () => clearInterval(interval);
+}, []);
 
   /* ✅ PRICE REFRESH (10 sec) */
   useEffect(() => {
@@ -157,14 +186,21 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-3 gap-6">
 
-        {/* LEFT PANEL */}
+              {/* LEFT PANEL */}
         <div className="col-span-2">
-          <StockDetails
-            stock={selectedStockData}
-            symbol={selectedStock}
-            format={format}
-            addToWatchlist={addToWatchlist}
-          />
+        <StockDetails
+        stock={selectedStockData}
+        symbol={selectedStock}
+        format={format}
+        addToWatchlist={addToWatchlist}
+        fetchStock={fetchStock} // 🔥 REQUIRED
+      />
+
+         <TopMovers
+          gainers={topMovers.gainers}
+          losers={topMovers.losers}
+          format={format}
+        />
         </div>
 
         {/* RIGHT PANEL */}

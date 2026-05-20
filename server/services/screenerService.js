@@ -56,8 +56,7 @@ export const runScreener = async () => {
 
   for (const symbol of STOCK_LIST) {
     try {
-      const prices = await getStockData(symbol);
-
+let { history, prices } = await getStockData(symbol, config);
       if (!prices || prices.length < 60) continue;
 
       const price = prices[prices.length - 1];

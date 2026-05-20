@@ -11,44 +11,24 @@ export const analyzeTrade = async (stock) => {
   const { symbol, price, rsi, score, bias } = stock;
 
 
+const prompt = `
+You are a professional trader.
 
-  const prompt = `
-You are a professional intraday trader.
-
-Analyze this setup strictly using given data.
-
-Stock: ${symbol}
+Given:
 Price: ${price}
 RSI: ${rsi}
-Bias: ${bias}
-Score: ${score}/6
-
-IMPORTANT RULES:
-
-- RSI < 35 = Oversold
-- RSI > 65 = Overbought
-- RSI 35–65 = Neutral
-
-- If bias = SELL → focus on bearish reasoning
-- If bias = BUY → focus on bullish reasoning
-
----
-
-Give STRICT output:
-
-Reason:
-- 1 line (correct interpretation only)
-
-Trade:
-- Entry:
-- Stop Loss:
-- Target:
 
 Rules:
-- No paragraphs
-- No contradictions
-- No wrong RSI interpretation
-- Be precise
+- If RSI < 30 → BUY setup
+- If RSI > 70 → SELL setup
+
+IMPORTANT:
+- Entry = current price
+- StopLoss must be BELOW entry for BUY
+- Target must be ABOVE entry for BUY
+- For SELL reverse logic
+
+Return only clean trade explanation.
 `;
 
   const response = await client.chat.completions.create({
