@@ -202,6 +202,94 @@ export const getTopMovers = async (req, res) => {
 
 
 
+
+
+
+// export const getRSIScreener = async (req, res) => {
+//   try {
+
+//     const symbols = Array.isArray(req.body.symbols)
+//       ? req.body.symbols
+//       : [];
+
+
+//     const results = await Promise.all(
+//       symbols.map(async (symbol) => {
+//         try {
+//           const { prices } = await getStockData(symbol, {
+//             range: "1mo",
+//             interval: "60m"
+//           });
+
+//           if (!prices || prices.length < 20) {
+//             return null;
+//           }
+
+//           const rsi = calculateRSI(prices);
+
+
+//           return {
+//             symbol,
+//             rsi: Number((rsi || 50).toFixed(2))
+//           };
+
+//         } catch (err) {
+//           console.log("❌ Error:", symbol);
+//           return null;
+//         }
+//       })
+//     );
+
+//     const filtered = results.filter(Boolean);
+
+
+//     // 🔥 STEP 1: STRICT FILTER
+//     let oversold = filtered
+//       .filter((s) => s.rsi >= 20 && s.rsi <= 35)
+//       .sort((a, b) => a.rsi - b.rsi);
+
+//     let overbought = filtered
+//       .filter((s) => s.rsi >= 65 && s.rsi <= 80)
+//       .sort((a, b) => b.rsi - a.rsi);
+
+
+
+//     // 🔥 STEP 2: FILL IF LESS THAN 10
+//     if (oversold.length < 10) {
+//       console.log("⚠️ Filling oversold...");
+//       const extra = filtered
+//         .sort((a, b) => a.rsi - b.rsi)
+//         .filter(s => !oversold.find(o => o.symbol === s.symbol)) // avoid duplicates
+//         .slice(0, 10 - oversold.length);
+
+//       oversold = [...oversold, ...extra];
+//     }
+
+//     if (overbought.length < 10) {
+//       const extra = filtered
+//         .sort((a, b) => b.rsi - a.rsi)
+//         .filter(s => !overbought.find(o => o.symbol === s.symbol))
+//         .slice(0, 10 - overbought.length);
+
+//       overbought = [...overbought, ...extra];
+//     }
+
+//     // 🔥 STEP 3: FINAL LIMIT
+//     oversold = oversold.slice(0, 10);
+//     overbought = overbought.slice(0, 10);
+
+//     console.log("✅ Final Oversold:", oversold.length);
+//     console.log("✅ Final Overbought:", overbought.length);
+
+//     res.json({ oversold, overbought });
+
+//   } catch (err) {
+//     console.error("❌ RSI SCREENER ERROR:", err.message);
+//     res.status(500).json({ error: err.message });
+//   }
+// };
+
+
 export const getRSIScreener = async (req, res) => {
   try {
     console.log("\n========== RSI SCREENER ==========");
@@ -215,23 +303,32 @@ export const getRSIScreener = async (req, res) => {
     const results = await Promise.all(
       symbols.map(async (symbol) => {
         try {
-          const { prices } = await getStockData(symbol, {
-            range: "1mo",
-            interval: "60m"
-          });
+          const [data15m, data1h] = await Promise.all([
+            getStockData(symbol, { range: "5d", interval: "15m" }),
+            getStockData(symbol, { range: "1mo", interval: "60m" })
+          ]);
 
-          if (!prices || prices.length < 20) {
+          if (!data15m?.prices || !data1h?.prices) {
             console.log("❌ No data:", symbol);
             return null;
           }
 
-          const rsi = calculateRSI(prices);
+          if (data15m.prices.length < 20 || data1h.prices.length < 20) {
+            console.log("❌ Not enough candles:", symbol);
+            return null;
+          }
 
-          console.log("RSI:", symbol, rsi);
+          const rsi15m = calculateRSI(data15m.prices);
+          const rsi1h = calculateRSI(data1h.prices);
+
+          console.log(
+            `📊 ${symbol} → RSI15m: ${rsi15m}, RSI1H: ${rsi1h}`
+          );
 
           return {
             symbol,
-            rsi: Number((rsi || 50).toFixed(2))
+            rsi15m: Number((rsi15m || 50).toFixed(2)),
+            rsi1h: Number((rsi1h || 50).toFixed(2))
           };
 
         } catch (err) {
@@ -245,34 +342,41 @@ export const getRSIScreener = async (req, res) => {
 
     console.log("✅ Valid Stocks:", filtered.length);
 
-    let oversold = filtered
-      .filter((s) => s.rsi >= 20 && s.rsi <= 35)
-      .sort((a, b) => a.rsi - b.rsi)
-      .slice(0, 10);
+    // ✅ STRICT FILTER ONLY (NO FALLBACK)
+    const oneHour = {
+      oversold: filtered
+        .filter((s) => s.rsi1h >= 20 && s.rsi1h <= 30)
+        .sort((a, b) => a.rsi1h - b.rsi1h)
+        .slice(0, 10),
 
-    let overbought = filtered
-      .filter((s) => s.rsi >= 65 && s.rsi <= 80)
-      .sort((a, b) => b.rsi - a.rsi)
-      .slice(0, 10);
+      overbought: filtered
+        .filter((s) => s.rsi1h >= 70 && s.rsi1h <= 80)
+        .sort((a, b) => b.rsi1h - a.rsi1h)
+        .slice(0, 10)
+    };
 
-    console.log("📉 Oversold count:", oversold.length);
-    console.log("📈 Overbought count:", overbought.length);
+    const fifteenMin = {
+      oversold: filtered
+        .filter((s) => s.rsi15m >= 20 && s.rsi15m <= 30)
+        .sort((a, b) => a.rsi15m - b.rsi15m)
+        .slice(0, 10),
 
-    if (oversold.length === 0) {
-      console.log("⚠️ Fallback oversold");
-      oversold = [...filtered]
-        .sort((a, b) => a.rsi - b.rsi)
-        .slice(0, 5);
-    }
+      overbought: filtered
+        .filter((s) => s.rsi15m >= 70 && s.rsi15m <= 80)
+        .sort((a, b) => b.rsi15m - a.rsi15m)
+        .slice(0, 10)
+    };
 
-    if (overbought.length === 0) {
-      console.log("⚠️ Fallback overbought");
-      overbought = [...filtered]
-        .sort((a, b) => b.rsi - a.rsi)
-        .slice(0, 5);
-    }
+    console.log("📉 1H Oversold:", oneHour.oversold.length);
+    console.log("📈 1H Overbought:", oneHour.overbought.length);
 
-    res.json({ oversold, overbought });
+    console.log("📉 15M Oversold:", fifteenMin.oversold.length);
+    console.log("📈 15M Overbought:", fifteenMin.overbought.length);
+
+    res.json({
+      oneHour,
+      fifteenMin
+    });
 
   } catch (err) {
     console.error("❌ RSI SCREENER ERROR:", err.message);

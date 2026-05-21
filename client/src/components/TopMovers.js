@@ -1,4 +1,9 @@
-export default function TopMovers({ gainers = [], losers = [], format }) {
+export default function TopMovers({
+  gainers = [],
+  losers = [],
+  format,
+  handleSelectStock // ✅ NEW PROP
+}) {
 
   // ✅ SAFE FORMAT FALLBACK
   const safeFormat = (num) => {
@@ -31,7 +36,11 @@ export default function TopMovers({ gainers = [], losers = [], format }) {
           {gainers.map((s) => (
             <div
               key={s.symbol}
-              className="flex justify-between items-center mb-2 text-sm"
+              onClick={() => {
+                console.log("Gainer clicked:", s.symbol); // 🔥 DEBUG
+                handleSelectStock && handleSelectStock(s.symbol);
+              }}
+              className="flex justify-between items-center mb-2 text-sm cursor-pointer hover:bg-gray-800 p-2 rounded transition"
             >
               <span className="text-gray-300">
                 {s.symbol.replace(".NS", "")}
@@ -41,10 +50,10 @@ export default function TopMovers({ gainers = [], losers = [], format }) {
                 <p className="text-gray-200">
                   ₹ {safeFormat(s.price)}
                 </p>
-              <p className="text-green-400 text-xs font-medium">
-  {s.changePercent > 0 ? "+" : ""}
-  {s.changePercent.toFixed(2)}%
-</p>
+
+                <p className="text-green-400 text-xs font-medium">
+                  +{Math.abs(s.changePercent).toFixed(2)}%
+                </p>
               </div>
             </div>
           ))}
@@ -59,7 +68,11 @@ export default function TopMovers({ gainers = [], losers = [], format }) {
           {losers.map((s) => (
             <div
               key={s.symbol}
-              className="flex justify-between items-center mb-2 text-sm"
+              onClick={() => {
+                console.log("Loser clicked:", s.symbol); // 🔥 DEBUG
+                handleSelectStock && handleSelectStock(s.symbol);
+              }}
+              className="flex justify-between items-center mb-2 text-sm cursor-pointer hover:bg-gray-800 p-2 rounded transition"
             >
               <span className="text-gray-300">
                 {s.symbol.replace(".NS", "")}
@@ -69,10 +82,10 @@ export default function TopMovers({ gainers = [], losers = [], format }) {
                 <p className="text-gray-200">
                   ₹ {safeFormat(s.price)}
                 </p>
-              <p className="text-red-400 text-xs font-medium">
-  {s.changePercent > 0 ? "+" : ""}
-  {s.changePercent.toFixed(2)}%
-</p>
+
+                <p className="text-red-400 text-xs font-medium">
+                  -{Math.abs(s.changePercent).toFixed(2)}%
+                </p>
               </div>
             </div>
           ))}
