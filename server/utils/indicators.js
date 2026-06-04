@@ -30,18 +30,38 @@ export const calculateMACD = (prices) => {
 
 // EMA 9 & 50
 export const calculateEMA = (prices) => {
-  const ema9 = EMA.calculate({
-    values: prices,
-    period: 9
-  });
 
-  const ema50 = EMA.calculate({
-    values: prices,
-    period: 50
-  });
+  const ema = (data, period) => {
+
+    if (data.length < period) return null;
+
+    const multiplier = 2 / (period + 1);
+
+    let emaValue =
+      data.slice(0, period)
+        .reduce((a, b) => a + b, 0) / period;
+
+    for (let i = period; i < data.length; i++) {
+      emaValue =
+        (data[i] - emaValue) * multiplier +
+        emaValue;
+    }
+
+    return Number(emaValue.toFixed(2));
+  };
 
   return {
-    ema9: ema9[ema9.length - 1],
-    ema50: ema50[ema50.length - 1]
+    ema9: ema(prices, 9),
+    ema50: ema(prices, 50),
+    ema200: ema(prices, 200)
   };
+};
+export const calculateSMA = (prices, period) => {
+  if (prices.length < period) return null;
+
+  const slice = prices.slice(-period);
+
+  return (
+    slice.reduce((sum, price) => sum + price, 0) / period
+  );
 };

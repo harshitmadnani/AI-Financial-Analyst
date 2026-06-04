@@ -5,8 +5,10 @@ import predictionRoutes from "./routes/predictionRoutes.js";
 
 import screenerRoute from "./routes/screenerRoute.js";  // 👈 import
 import stockRoutes from "./routes/stockRoutes.js";
+import { startRSIMailer } from "./jobs/rsiMailer.js";
 
 dotenv.config();
+startRSIMailer();
 
 const app = express();
 
